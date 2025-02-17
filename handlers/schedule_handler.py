@@ -6,16 +6,27 @@ from helpers.constants import URL_LESSONS
 
 async def fetch_and_cache_schedule(name: str):
     """ Получает данные с API или из кэша (если они не устарели). """
+    
+    # 1️⃣ Проверяем данные в кэше
     cached_data = await get_schedule_cache(name)
     if cached_data:
+        print(f"✅ Данные загружены из кэша для {name}:\n{cached_data[:500]}...\n")  # Выводим первые 500 символов
         return json.loads(cached_data)
 
+    print(f"🔄 Кэш устарел. Загружаем данные из API для {name}...")
+
+    # 2️⃣ Запрашиваем новые данные с API
     async with aiohttp.ClientSession() as session:
-        async with session.get(f'{URL_LESSONS}{name}') as response:
+        async with session.get(f'{URL_LESSONS}/{name}') as response:
             if response.status == 200:
                 data = await response.json()
-                await save_schedule_cache(name, json.dumps(data))
+                
+                print(f"🌍 Данные получены из API {URL_LESSONS}{name} для {name}:\n{json.dumps(data)[:500]}...\n")  # Выводим первые 500 символов
+
+                await save_schedule_cache(name, json.dumps(data))  # Сохраняем в кэш
                 return data
+
+            print(f"❌ Ошибка запроса API: {response.status}")
             return None
 
 def parse_date(date_str: str):
@@ -54,8 +65,7 @@ def filter_schedule_by_date(data, target_date):
     """ Возвращает расписание на конкретную дату. """
     for week in data.get("weeks", []):
         for day in week.get("days", []):
-            day_date = parse_date(day["date"])
-            if day_date == target_date:
+            if parse_date(day["date"]) == target_date:
                 return format_lessons(day)
     return f"📅 {target_date.strftime('%d.%m.%Y')} занятий нет."
 
@@ -66,19 +76,27 @@ def filter_schedule_week(data, start_date):
     schedule = []
     for week in data.get("weeks", []):
         for day in week.get("days", []):
-            day_date = parse_date(day["date"])
-            if start_date <= day_date <= week_end:
+            if start_date <= parse_date(day["date"]) <= week_end:
                 schedule.append(format_lessons(day))
 
     return "\n\n".join(schedule) if schedule else f"📅 С {start_date.strftime('%d.%m.%Y')} по {week_end.strftime('%d.%m.%Y')} занятий нет."
 
 def format_lessons(day):
-    """ Форматирует список занятий в удобочитаемый текст. """
+    """ Форматирует список занятий в удобочитаемый и красивый HTML-шаблон. """
     lessons = []
     for pair in day["pairs"]:
         for lesson in pair["lessons"]:
-            lessons.append(f"⏰ {pair['startTime']} - {lesson['subject']} ({lesson['kind']['shortName']}), ауд. {lesson['audience']}, {lesson['teacher']['name']}")
+            lessons.append(
+                f"📖  <b>{lesson['subject']}</b> \n"
+                f"📝  {lesson['kind']['name']}\n"
+                f"🔑  {lesson['audience']}\n"
+                f"⏰  {pair['startTime']} - {pair['endTime']}\n"
+                f"👨‍🏫  {lesson['teacher']['name']}"
+            )
     
     if lessons:
-        return f"📅 {day['name']} ({day['date']}):\n" + "\n".join(lessons)
-    return f"📅 {day['name']} ({day['date']}): занятий нет."
+        header = f"———<u>{day['name'].upper()} ({day['date']})</u>———\n\n"
+        # separator = "————————————\n"
+        content = "\n\n".join(lessons)
+        return header + content
+    return f"<b>📅 {day['name']} ({day['date']})</b>\nЗанятий нет."
