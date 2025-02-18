@@ -20,7 +20,17 @@ __pycache__/
 .pycache/
 
 # database file
-.shedule.db/
+# Игнорировать конкретный файл
+db/database.db
+
+# Игнорировать все .db файлы
+*.db
+
+# Игнорировать скрытые .db файлы
+.*.db
+
+# Игнорировать всю папку db
+db/
 
 # Logs and runtime data
 logs/

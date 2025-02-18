@@ -9,6 +9,7 @@ load_dotenv()
 TOKEN = os.getenv("TOKEN")
 URL_RINH = os.getenv("URL_RINH")
 URL_LESSONS = f"{URL_RINH}/schedule/lessons"
+URL_LIST = f"{URL_RINH}/schedule/search/"
 
 BOT = Bot(token=TOKEN, timeout=ClientTimeout(total=120), parse_mode=ParseMode.HTML)
 DP_BOT = Dispatcher(BOT)

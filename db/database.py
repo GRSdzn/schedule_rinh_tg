@@ -1,3 +1,4 @@
+# db/database.py
 import aiosqlite
 import time
 
@@ -5,6 +6,7 @@ DB_PATH = "db/database.db"
 
 async def init_db():
     async with aiosqlite.connect(DB_PATH) as db:
+        # Создаем таблицы
         await db.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 user_id INTEGER PRIMARY KEY,
@@ -16,6 +18,18 @@ async def init_db():
                 name TEXT PRIMARY KEY,
                 data TEXT,
                 timestamp INTEGER
+            )
+        """)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS groups (
+                id TEXT PRIMARY KEY,
+                name TEXT
+            )
+        """)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS teachers (
+                id TEXT PRIMARY KEY,
+                name TEXT
             )
         """)
         await db.commit()
@@ -55,3 +69,31 @@ async def get_schedule_cache(name: str):
             if row and int(time.time()) - row[1] < 10800:  # 3 часа (10800 сек)
                 return row[0]
             return None
+
+async def save_groups_and_teachers(groups: list, teachers: list):
+    async with aiosqlite.connect(DB_PATH) as db:
+        # Очищаем таблицы перед добавлением новых данных
+        await db.execute("DELETE FROM groups")
+        await db.execute("DELETE FROM teachers")
+
+        # Добавляем группы
+        for group in groups:
+            await db.execute("INSERT INTO groups (id, name) VALUES (?, ?)", (group["id"], group["name"]))
+
+        # Добавляем преподавателей
+        for teacher in teachers:
+            await db.execute("INSERT INTO teachers (id, name) VALUES (?, ?)", (teacher["id"], teacher["name"]))
+
+        await db.commit()
+
+async def search_groups(query: str):
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("SELECT name FROM groups WHERE name LIKE ?", (f"%{query}%",)) as cursor:
+            rows = await cursor.fetchall()
+            return [row[0] for row in rows]
+
+async def search_teachers(query: str):
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("SELECT name FROM teachers WHERE name LIKE ?", (f"%{query}%",)) as cursor:
+            rows = await cursor.fetchall()
+            return [row[0] for row in rows]
