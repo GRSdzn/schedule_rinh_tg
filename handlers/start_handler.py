@@ -50,8 +50,4 @@ async def send_start_message_to_users():
     for user_id in users:
         selection = await get_user_selection(user_id)
         if selection:
-            keyboard = create_schedule_keyboard()
-            try:
-                await BOT.send_message(user_id, f"Бот перезапущен! Ваш выбор сохранён: {selection}\nВыберите период:", reply_markup=keyboard)
-            except:
-                continue
+            continue
